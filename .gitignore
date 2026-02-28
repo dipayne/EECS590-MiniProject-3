@@ -1,0 +1,32 @@
+# LaTeX auxiliary files
+*.aux
+*.log
+*.out
+*.synctex.gz
+*.blg
+*.bbl
+
+# Model checkpoints (too large for GitHub)
+*.pt
+
+# Helper/generator scripts
+gen_colab_notebook.py
+
+# Incomplete logs
+training_log.txt
+
+# Old/superseded report versions
+Davis_Payne_Mini_Project3_EECS_590_v1.*
+Davis_Payne_Mini_Project3_EECS_590_v2.tex
+Davis_Payne_Mini_Project3_EECS_590_v2.pdf
+Davis_Payne_Mini_Project3_EECS_590_v2.aux
+Davis_Payne_Mini_Project3_EECS_590_v2.log
+Davis_Payne_Mini_Project3_EECS_590_v2.out
+Davis_Payne_Mini_Project3_EECS_590_v2.synctex.gz
+
+# Old A2C figure
+fig08_a2c_learning_curve.png
+
+# Python cache
+__pycache__/
+*.pyc
