@@ -1,80 +1,70 @@
 """
-Davis_Payne_Mini_Project3_Problem2.py
+Problem2_PPO_Atari_Fresh.py
 
-Problem 2: Superhuman Atari via PPO (Actor-Critic) and Saliency Analysis
-=========================================================================
+Problem 2: Superhuman Atari via PPO and Saliency Analysis
+=========================================================
 
 HOW TO RUN
 ----------
-1.  Install dependencies (once):
-        pip install torch torchvision gymnasium[atari] ale-py opencv-python matplotlib numpy
+1) Install dependencies (once):
+   pip install torch torchvision gymnasium[atari] ale-py opencv-python matplotlib numpy
 
-2.  Accept ROM licence (once):
-        pip install "gymnasium[accept-rom-license]"
+2) Accept ROM license (once):
+   pip install "gymnasium[accept-rom-license]"
 
-3.  Full training (~30-60 min on CPU, 100 k steps):
-        python Davis_Payne_Mini_Project3_Problem2.py
+3) Full training (default):
+   python Problem2_PPO_Atari_Fresh.py
 
-4.  Quick smoke-test (~2 min):
-        python Davis_Payne_Mini_Project3_Problem2.py --smoke-test
+4) Quick smoke test:
+   python Problem2_PPO_Atari_Fresh.py --smoke-test
 
-ALGORITHM: Proximal Policy Optimisation (PPO, Schulman et al. 2017)
---------------------------------------------------------------------
-PPO is an on-policy, model-free Actor-Critic algorithm.  A shared CNN
-backbone produces both a *policy* π(a|s) (actor) and a *state-value
-function* V(s) (critic).
+ALGORITHM: Proximal Policy Optimization (PPO, Schulman et al. 2017)
+-------------------------------------------------------------------
+PPO is an on-policy, model-free actor-critic algorithm. A shared CNN
+backbone produces both a policy pi(a|s) (actor) and a value V(s) (critic).
 
 Network
-    Input:  (batch, 4, 84, 84) stacked grayscale frames
-    Shared: 3 conv layers (Mnih et al. 2015) + Linear(3136, 512) + ReLU
-    Actor:  Linear(512, n_actions)  ->  logits -> π(a|s)
-    Critic: Linear(512, 1)          ->  V(s)
+  Input:  (batch, 4, 84, 84) stacked grayscale frames
+  Shared: 3 conv layers (Mnih et al. 2015) + Linear(3136, 512) + ReLU
+  Actor:  Linear(512, n_actions) -> logits -> pi(a|s)
+  Critic: Linear(512, 1)         -> V(s)
 
 Loss function (Q1a)
-    L(θ) = L_CLIP(θ) + c_v · L_V(θ) - c_e · H[π(·|s)]
-
-    L_CLIP = E_t[ min( r_t(θ) · Â_t ,
-                       clip(r_t(θ), 1-ε, 1+ε) · Â_t ) ]
-    r_t(θ) = π_θ(a_t|s_t) / π_θ_old(a_t|s_t)      (probability ratio)
-    Â_t    = GAE advantage  (Generalised Advantage Estimation)
-    L_V    = E_t[ (V_θ(s_t) - R_t)² ]               (MSE value target)
-    H[π]   = -E_t[ Σ_a π(a|s_t) log π(a|s_t) ]      (entropy bonus)
+  L = L_CLIP + c_v * L_V - c_e * H[pi(.|s)]
+  L_CLIP = E_t[ min( r_t * A_t, clip(r_t, 1-eps, 1+eps) * A_t ) ]
+  r_t = pi_theta(a_t|s_t) / pi_theta_old(a_t|s_t)
+  A_t = GAE advantage
+  L_V = E_t[(V_theta(s_t) - R_t)^2]
+  H[pi] = -E_t[ sum_a pi(a|s_t) log pi(a|s_t) ]
 
 Target network (Q1b)
-    PPO does not maintain a separate frozen target network.  Instead,
-    the clipping ratio ε prevents any single update from deviating far
-    from the old policy, providing a similar stabilising effect.
+  PPO has no frozen target network. The clipped objective constrains
+  policy updates, which stabilizes training.
 
 Replay buffer (Q1c)
-    PPO is on-policy and uses no replay buffer.  Fresh transitions are
-    collected from the current policy, used for n_epochs gradient steps,
-    then *discarded*.  This avoids the off-policy distribution shift that
-    a replay buffer would introduce in a policy-gradient method.
+  PPO is on-policy and uses no replay buffer. Fresh rollouts are used
+  for a few epochs, then discarded.
 
 Bellman / on-policy / model-free (Q1d)
-    The critic is trained via the Bellman consistency
-        V(s) = E[r + γ V(s')]
-    using n-step bootstrapped returns with GAE.
-    PPO is ON-POLICY (data must come from the current policy) and
-    MODEL-FREE (no environment dynamics model is learned or used).
+  The critic is trained with bootstrapped returns and GAE:
+    V(s) ~= E[r + gamma V(s')]
+  PPO is on-policy and model-free.
 
-Saliency scalar used in place of Q̂(f*, a*)
-    For an Actor-Critic / PPO agent we use  log π(a|f)  as the
-    action-specific scalar; it plays the same role as Q̂(f*, a*) in the
-    original DQN saliency formulation:
-        Sal(i,j) = | log π(a | f*) − log π(a | f̃*_ij) |
+Saliency scalar used in place of Q-hat(f*, a*)
+  For PPO we use log pi(a|f) as the action-specific scalar:
+    Sal(i,j) = | log pi(a|f*) - log pi(a|f_tilde_ij) |
 
 Figures produced
 ----------------
-fig08_ppo_learning_curve.png        Q2a  episode return vs training step + losses
-fig09_value_over_episode.png        Q2b  V(s) per eval step + pivotal annotations
-fig10_pivotal_frames.png            Q3   5 pivotal game screenshots
-fig11_saliency_greedy.png           Q4   perturbation saliency, greedy a*
-fig12_saliency_nongreedy.png        Q5   greedy a* vs non-greedy a' saliency
-fig13_patch_size_comparison.png     Q6a  P=4, P=8, P=14 on one frame
-fig14_saliency_entropy_training.png Q6b  saliency entropy vs training step
-fig15_gradient_vs_perturbation.png  Q7a  gradient saliency vs perturbation saliency
-fig16_adversarial_frames.png        Q7c  adversarial perturbation δ and flipped action
+fig08_ppo_learning_curve.png        Q2a  return vs step + losses
+fig09_value_over_episode.png        Q2b  V(s) over eval step + pivots
+fig10_pivotal_frames.png            Q3   pivotal frames
+fig11_saliency_greedy.png           Q4   saliency, greedy action
+fig12_saliency_nongreedy.png        Q5   saliency, non-greedy action
+fig13_patch_size_comparison.png     Q6a  patch size comparison
+fig14_saliency_entropy_training.png Q6b  saliency entropy over training
+fig15_gradient_vs_perturbation.png  Q7a  gradient vs perturbation
+fig16_adversarial_frames.png        Q7c  adversarial perturbation
 """
 
 import os
@@ -113,12 +103,15 @@ parser.add_argument("--steps", type=int, default=0,
                     help="Override total training steps (0 = use built-in default)")
 parser.add_argument("--n-envs", type=int, default=1,
                     help="Number of parallel environments (1=CPU default, 8=GPU/Colab)")
+parser.add_argument("--resume", action="store_true",
+                    help="Resume training from ppo_checkpoint.pt if it exists")
 args   = parser.parse_args()
 SMOKE  = args.smoke_test
 GAME   = args.game
 SEED   = args.seed
 STEPS_OVERRIDE  = args.steps
 N_ENVS          = args.n_envs
+RESUME          = args.resume
 
 random.seed(SEED)
 np.random.seed(SEED)
@@ -707,7 +700,6 @@ def adversarial_perturbation(agent: PPOAgent, obs: np.ndarray,
 def smooth(x, w):
     return np.convolve(x, np.ones(w) / w, mode="valid")
 
-
 # =============================================================================
 # 6.  Hyperparameters
 # =============================================================================
@@ -722,7 +714,7 @@ else:
     TOTAL_STEPS   = 500_000
     N_STEPS       = 128    # rollout steps per environment
     N_EPOCHS      = 4      # PPO update epochs per rollout
-    EVAL_EPISODES = 5      # >= 5 required by assignment
+    EVAL_EPISODES = 20     # stable mean eval vs high-variance 5-ep estimate
     LR            = 2.5e-4
 
 # --steps flag overrides default TOTAL_STEPS
@@ -779,6 +771,31 @@ agent  = PPOAgent(
 )
 buffer = RolloutBuffer(N_STEPS, n_envs=N_ENVS)
 
+# Optional resume
+ckpt = fig_path("ppo_checkpoint.pt")
+ep_returns, ep_step_totals, ep_lengths = [], [], []
+step = 0
+ep_count = 0
+if RESUME and os.path.exists(ckpt):
+    print(f"Resuming from checkpoint: {ckpt}")
+    ck = torch.load(ckpt, map_location="cpu")
+    agent.net.load_state_dict(ck["net_state"])
+    agent.optimizer.load_state_dict(ck["opt_state"])
+    # Move optimizer state to the active device
+    for state in agent.optimizer.state.values():
+        for k, v in state.items():
+            if torch.is_tensor(v):
+                state[k] = v.to(DEVICE)
+    agent.updates = ck.get("updates", 0)
+    ep_returns = ck.get("ep_returns", [])
+    ep_step_totals = ck.get("ep_steps", [])
+    ep_lengths = ck.get("ep_lengths", [])
+    step = ck.get("step", ep_step_totals[-1] if ep_step_totals else 0)
+    ep_count = ck.get("ep_count", len(ep_returns))
+else:
+    if RESUME:
+        print(f"Checkpoint not found, starting fresh: {ckpt}")
+
 # Single env for saliency snapshots (always needed regardless of N_ENVS)
 snap_env = make_atari_env(GAME, seed=SEED + 999)
 
@@ -794,14 +811,9 @@ print(f"Actions : {n_acts}  |  {action_meanings}")
 print(f"Rollouts: ~{TOTAL_STEPS // total_batch}  ×  {total_batch} steps  "
       f"×  {N_EPOCHS} epochs\n")
 
-ep_returns     = []
-ep_step_totals = []
-ep_lengths     = []
 snap_data      = {}
 
-step       = 0
-prev_step  = 0
-ep_count   = 0
+prev_step  = step
 t_start    = time.time()
 snaps_done = set()
 
@@ -1436,8 +1448,11 @@ torch.save({
     "updates":    agent.updates,
     "net_state":  agent.net.state_dict(),
     "opt_state":  agent.optimizer.state_dict(),
+    "step":       step,
+    "ep_count":   ep_count,
     "ep_returns": ep_returns,
     "ep_steps":   ep_step_totals,
+    "ep_lengths": ep_lengths,
 }, ckpt)
 print(f"\nCheckpoint saved: {ckpt}")
 
